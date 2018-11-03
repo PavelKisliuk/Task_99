@@ -1,427 +1,388 @@
-import java.awt.geom.Area;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.*;
 
 public class Task_99 {
-
 	public static void main(String[] args) {
-		Labyrinth L = new Labyrinth();
-		L.setDownPoints();
-		int w = L.way();
+		try(Formatter output = new Formatter("OUTPUT.txt")) {
+			Labyrinth test = new Labyrinth();
+			test.setDownPoints();
+			output.format("%d", test.way());
+		}catch (FileNotFoundException | FormatterClosedException e) {
+			e.printStackTrace();
+		}
 	}
 }
 
-class Labyrinth {
 
+//-----------------------------------------------------------------------------
+/*public*/class Labyrinth {
+	//-----------------------------------------------------------------------------fields
 	private int levels = 0;
 	private int rows = 0;
 	private int columns = 0;
-	//-----------------------------------------------------------
-	private ArrayList <LabyrinthsArea> levelsOfLabyrinth;
-	//-----------------------------------------------------------
-	public Labyrinth(String path)
+	private ArrayList <LabyrinthsArea> levelsOfLabyrinth;//array from stand-alone levels
+	static int princeRaw;
+	static int princeColumn;
+	//-----------------------------------------------------------------------------constructors
+	/*public*/ private Labyrinth(String path)
 	{
-
 		try(Scanner input = new Scanner(Paths.get(path))) {
-			//-----------------------------------------------------------
+			//-----------------------------------------------------------------------------
 			if(input.hasNext()) {
+				//-----------------------------------------------------------------------------
 				String parametersOfLabyrinth = input.nextLine().strip();
-				if(isCorrectParametersOfLabyrinth(parametersOfLabyrinth)) {
+				//-----------------------------------------------------------------------------
+				if(this.isCorrectParametersOfLabyrinth(parametersOfLabyrinth)) {
 					String[] tokensParametersOfLabyrinth = parametersOfLabyrinth.split(" ");
-					levels = Integer.valueOf(tokensParametersOfLabyrinth[0]);//сделать через цикл
-					rows = Integer.valueOf(tokensParametersOfLabyrinth[1]);
-					columns = Integer.valueOf(tokensParametersOfLabyrinth[2]);
+					int numberOfParameter = 0;
+					this.levels = Integer.valueOf(tokensParametersOfLabyrinth[numberOfParameter++]);
+					this.rows = Integer.valueOf(tokensParametersOfLabyrinth[numberOfParameter++]);
+					this.columns = Integer.valueOf(tokensParametersOfLabyrinth[numberOfParameter]);
 				}
+				//-----------------------------------------------------------------------------
+				else {
+					throw new IOException("Incorrect value in file!");
+				}
+				//-----------------------------------------------------------------------------
 			}
+			//-----------------------------------------------------------------------------
 			else {
-
+				throw new IOException("File is empty!");
 			}
-			//-----------------------------------------------------------
-			if((this.levels < 2) || (this.levels > 50) ||
-					(this.rows < 2) || (this.rows > 50) ||
-					(this.columns < 2) || (this.columns > 50)) {
-				//нехорошо
-			}
-			//-----------------------------------------------------------
-
-
-			levelsOfLabyrinth = new ArrayList<>();
-			for(int i = 0; i < levels; i++) {
-				levelsOfLabyrinth.add(new LabyrinthsArea(input, rows, columns));
+			//-----------------------------------------------------------------------------
+			//-----------------------------------------------------------------------------
+			this.levelsOfLabyrinth = new ArrayList<>(); //create all levels of labyrinth
+			for(int i = 0; i < this.levels; i++) {
+				this.levelsOfLabyrinth.add(new LabyrinthsArea(input, this.rows, this.columns));
 				if(input.hasNext()) {
-					input.nextLine();
+					input.nextLine();//delete interval between last string previous area and first string next area
 				}
-			} // проверить на соответствие levels, rows, columns
-
-
-		} catch (IOException e) {
-
+			}
+			//-----------------------------------------------------------------------------
+		} catch (IOException | NoSuchElementException e) {
+			e.printStackTrace();
 		}
-
-
 	}
 
-	public Labyrinth()
+	/*public*/ Labyrinth()
 	{
 		this("INPUT.txt");
 	}
-
-	public void setDownPoints()
+	//-----------------------------------------------------------------------------methods for constructors
+	private boolean isCorrectParametersOfLabyrinth(String s)
 	{
-
-		//levelsOfLabyrinth.get(0).setAmountOfDownPoints(1); //
-		for(int i = 0; i < levels - 1; i++) {
-			int countOfDownPoints = 0; //
-			LabyrinthsArea upperArea = levelsOfLabyrinth.get(i);
-			LabyrinthsArea lowerArea = levelsOfLabyrinth.get(i + 1);
-			for (int j = 0; j < this.rows; j++) {
-				for(int k = 0; k < this.columns; k++) {
-					if(FieldsInLabyrinth.COLUMN != upperArea.getPlace(j, k) &&
-							FieldsInLabyrinth.COLUMN != lowerArea.getPlace(j, k)) {
-						upperArea.change(FieldsInLabyrinth.DOWNPOINT,j, k);
-						countOfDownPoints++;
+		if(s.matches("[1-9]\\d? [1-9]\\d? [1-9]\\d?")) {
+			String[] tokens = s.split(" ");
+			for(String token : tokens) {
+				if((Integer.valueOf(token) < 2) || (Integer.valueOf(token) > 50)) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	//-----------------------------------------------------------------------------
+	/*public*/ void setDownPoints()
+	//find point where we can go to lower level
+	{
+		for(int i = 0; i < this.levels - 1; i++) {
+			LabyrinthsArea upperArea = this.levelsOfLabyrinth.get(i);
+			LabyrinthsArea lowerArea = this.levelsOfLabyrinth.get(i + 1);
+			//-----------------------------------------------------------------------------
+			for (int row = 0; row < this.rows; row++) {
+				for(int column = 0; column < this.columns; column++) {
+					if(FieldsInLabyrinth.COLUMN != upperArea.getElementOfArea(row, column) &&
+							FieldsInLabyrinth.COLUMN != lowerArea.getElementOfArea(row, column)) {
+						upperArea.changeElementOfArea(row, column);
 					}
 				}
-				lowerArea.setAmountOfDownPoints(countOfDownPoints);
 			}
+			//-----------------------------------------------------------------------------
 		}
 	}
 
-	public int way()
+	/*public*/ int way()
 	{
-		int princeRaw = this.levelsOfLabyrinth.get(0).getPrinceRaw();
-		int princeColumn = this.levelsOfLabyrinth.get(0).getPrinceColumn();
-		LabyrinthsArea currentArea = this.levelsOfLabyrinth.get(0);
-		ArrayList<DownTable> pointsOfDownTablesOfOneArea = new ArrayList<>();
+		ArrayList<DownTable> allDownTables = new ArrayList<>();
+		this.fillDownTables(allDownTables, new int[this.rows][this.columns], this.levelsOfLabyrinth.get(0),
+				0,0, princeRaw, princeColumn);
+		//-----------------------------------------------------------------------------
+		return this.findShortWay(allDownTables);
+	}
 
-		int[][] arrayOfPaces = new int[this.rows][this.columns];
-		fillArray(arrayOfPaces);
+	private void fillDownTables(ArrayList<DownTable> allDownTables, int[][] arrayOfPaces, LabyrinthsArea currentArea,
+				   int group, int currentLevel, int princeRaw, int princeColumn)
+	{
+		this.fillArray(arrayOfPaces);
 		arrayOfPaces[princeRaw][princeColumn] = 0;
-
-		recursive(currentArea, arrayOfPaces,
-				princeRaw, princeColumn,
+		this.fillPaces(currentArea, arrayOfPaces, princeRaw, princeColumn,
 				this.rows - 1, this.columns - 1, 0);
-
-//---------------------------------------------------------—
-		int groupe = 0;
-		for (int m = 0; m < this.rows; m++) {
-			for (int n = 0; n < this.columns; n++) {
-				if(-2 != arrayOfPaces[m][n]) {
-					if (FieldsInLabyrinth.DOWNPOINT == currentArea.getPlace(m, n) ||
-							FieldsInLabyrinth.PRINCESS == currentArea.getPlace(m, n)) {
-						pointsOfDownTablesOfOneArea.add(new DownTable(m, n, arrayOfPaces[m][n], 0, groupe));
-						groupe++;
-					}
-				}
-				else {
-
-				}
-			}
-		}
-
-		ArrayList<ArrayList<DownTable>> allDownTablesOfOneLevel = new ArrayList<>();
-		allDownTablesOfOneLevel.add(pointsOfDownTablesOfOneArea);
-
-		ArrayList<ArrayList<ArrayList<DownTable>>> allDownTables = new ArrayList<>();
-		allDownTables.add(allDownTablesOfOneLevel);
-
-
-		for(int i = 1; i < this.levels; i++) {
-			ArrayList<ArrayList<DownTable>> tempAllDownTablesOfOneLevel = new ArrayList<>();
-			allDownTablesOfOneLevel = allDownTables.get(i - 1);
-			for (int j = 0; j < allDownTablesOfOneLevel.size(); j++) {
-				pointsOfDownTablesOfOneArea = allDownTablesOfOneLevel.get(j);
-				for(int k = 0;k < pointsOfDownTablesOfOneArea.size(); k++) {
-					groupe = pointsOfDownTablesOfOneArea.get(k).getGroupe();
-					ArrayList<DownTable> tempPoints = new ArrayList<>();
-					princeRaw = pointsOfDownTablesOfOneArea.get(k).getRaw();
-					princeColumn = pointsOfDownTablesOfOneArea.get(k).getColumn();
-					currentArea = this.levelsOfLabyrinth.get(i);
-
-					arrayOfPaces = new int[this.rows][this.columns];
-					fillArray(arrayOfPaces);
-					arrayOfPaces[princeRaw][princeColumn] = 0;
-
-					recursive(currentArea, arrayOfPaces,
-							princeRaw, princeColumn,
-							this.rows - 1, this.columns - 1, 0);
-
-//---------------------------------------------------------—
-					for (int m = 0; m < this.rows; m++) {
-						for (int n = 0; n < this.columns; n++) {
-							if(-2 != arrayOfPaces[m][n]) {
-								if (FieldsInLabyrinth.DOWNPOINT == currentArea.getPlace(m, n) ||
-										FieldsInLabyrinth.PRINCESS == currentArea.getPlace(m, n)) {
-									tempPoints.add(new DownTable(m, n, arrayOfPaces[m][n], i, groupe));
-								}
-							}
+		//-----------------------------------------------------------------------------
+		if(currentLevel != (this.levels - 1)) {
+			for (int row = 0; row < this.rows; row++) {
+				for (int column = 0; column < this.columns; column++) {
+					if(-2 != arrayOfPaces[row][column]) {
+						if (FieldsInLabyrinth.DOWNPOINT == currentArea.getElementOfArea(row, column)) {
+							allDownTables.add(new DownTable(row, column, arrayOfPaces[row][column], currentLevel, group));
+							group++;
 						}
 					}
-
-
-					tempAllDownTablesOfOneLevel.add(tempPoints);
 				}
-
 			}
-
-			allDownTables.add(tempAllDownTablesOfOneLevel);
+			ArrayList <DownTable> thisDownTables = new ArrayList<>(allDownTables);
+			for(DownTable downTable : thisDownTables) {
+				if(downTable.getLevel() == currentLevel) {
+					this.fillDownTables(allDownTables, arrayOfPaces, this.levelsOfLabyrinth.get(currentLevel + 1),
+							downTable.getGroup(), currentLevel + 1,
+							downTable.getRaw(), downTable.getColumn());
+				}
+			}
 		}
-
-		return shortWay(allDownTables);
+		//-----------------------------------------------------------------------------
+		else {
+			for (int row = 0; row < this.rows; row++) {
+				for (int column = 0; column < this.columns; column++) {
+					if(-2 != arrayOfPaces[row][column]) {
+						if (FieldsInLabyrinth.PRINCESS == currentArea.getElementOfArea(row, column)) {
+							allDownTables.add(new DownTable(row, column, arrayOfPaces[row][column], currentLevel, group));
+							group++;
+						}
+					}
+				}
+			}
+		}
 	}
 
-	public void recursive(LabyrinthsArea Area, int[][] Array, int i, int j, int maxI, int maxJ, int current)
+	private void fillPaces(LabyrinthsArea area, int[][] array, int currentRow, int currentColumn,
+						  int maxRow, int maxColumn, int currentPace)
 	{
+		//recursive method of bypass of one area of labyrinth
+		//area - current area
+		//array - representation of area as array, where element mean count of steps
+		//prince need to go to land this element
+		//currentRow & currentColumn mean that's mean
+		//maxRow & maxColumn - scope of array
+		//currentPace - amount of paces from prince to this point
+
 		boolean canGoSouth = false;
 		boolean canGoNorth = false;
 		boolean canGoWest = false;
 		boolean canGoEast = false;
 
-		if((i != 0) && (Area.getPlace(i - 1, j) != FieldsInLabyrinth.COLUMN)) {
-			if((Array[i - 1][j] > current + 1) || (Array[i - 1][j] == -2)) {
+		if((currentRow != 0) && (area.getElementOfArea(currentRow - 1, currentColumn) != FieldsInLabyrinth.COLUMN)) {
+			if((array[currentRow - 1][currentColumn] > currentPace + 1) || (array[currentRow - 1][currentColumn] == -2)) {
 				canGoSouth = true;
-				Array[i - 1][j] = current + 1;
+				array[currentRow - 1][currentColumn] = currentPace + 1;
 			}
 
 		}
-		if((i != maxI) && (Area.getPlace(i + 1, j) != FieldsInLabyrinth.COLUMN)) {
-			if(Array[i + 1][j] > current + 1 || (Array[i + 1][j] == -2)) {
+		if((currentRow != maxRow) && (area.getElementOfArea(currentRow + 1, currentColumn) != FieldsInLabyrinth.COLUMN)) {
+			if(array[currentRow + 1][currentColumn] > currentPace + 1 || (array[currentRow + 1][currentColumn] == -2)) {
 				canGoNorth = true;
-				Array[i + 1][j] = current + 1;
+				array[currentRow + 1][currentColumn] = currentPace + 1;
 			}
 		}
-		if((j != 0) && (Area.getPlace(i, j - 1) != FieldsInLabyrinth.COLUMN)) {
-			if(Array[i][j - 1] > current + 1 || (Array[i][j - 1] == -2)) {
+		if((currentColumn != 0) && (area.getElementOfArea(currentRow, currentColumn - 1) != FieldsInLabyrinth.COLUMN)) {
+			if(array[currentRow][currentColumn - 1] > currentPace + 1 || (array[currentRow][currentColumn - 1] == -2)) {
 				canGoWest = true;
-				Array[i][j - 1] = current + 1;
+				array[currentRow][currentColumn - 1] = currentPace + 1;
 			}
 		}
-		if((j != maxJ) && (Area.getPlace(i, j + 1) != FieldsInLabyrinth.COLUMN)) {
-			if(Array[i][j + 1] > current + 1 || (Array[i][j + 1] == -2)) {
+		if((currentColumn != maxColumn) && (area.getElementOfArea(currentRow, currentColumn + 1) != FieldsInLabyrinth.COLUMN)) {
+			if(array[currentRow][currentColumn + 1] > currentPace + 1 || (array[currentRow][currentColumn + 1] == -2)) {
 				canGoEast = true;
-				Array[i][j + 1] = current + 1;
+				array[currentRow][currentColumn + 1] = currentPace + 1;
 			}
 		}
-		//-----------------------------------------------------------
+		//-----------------------------------------------------------------------------
 		if(canGoSouth) {
-			recursive(Area, Array, i-1, j, maxI, maxJ, current+1);
+			this.fillPaces(area, array, currentRow-1, currentColumn, maxRow, maxColumn, currentPace + 1);
 		}
 		if(canGoNorth) {
-			recursive(Area, Array, i+1, j, maxI, maxJ, current+1);
+			this.fillPaces(area, array, currentRow+1, currentColumn, maxRow, maxColumn, currentPace + 1);
 		}
 		if(canGoWest) {
-			recursive(Area, Array, i, j-1, maxI, maxJ, current+1);
+			this.fillPaces(area, array, currentRow, currentColumn-1, maxRow, maxColumn, currentPace + 1);
 		}
 		if(canGoEast) {
-			recursive(Area, Array, i, j+1, maxI, maxJ, current+1);
+			this.fillPaces(area, array, currentRow, currentColumn+1, maxRow, maxColumn, currentPace + 1);
 		}
 
 	}
 
-	int shortWay(ArrayList<ArrayList<ArrayList<DownTable>>> allDownTables)
+	private int findShortWay(ArrayList<DownTable> allDownTables)
 	{
-		int shortWay = 0;
-		ArrayList<DownTable> groupe = new ArrayList<>();
-
-		TreeMap<Integer, Integer> groupeMap = new TreeMap<>();
-		int number = 0;
-		for(int i = 0; i < allDownTables.size(); i++) {
-			for(int j = 0; j < allDownTables.get(i).size(); j++) {
-				for(int k = 0; k < allDownTables.get(i).get(j).size(); k++) {
-					if(allDownTables.get(i).get(j).get(k).getGroupe() == number){
-						groupe.add(allDownTables.get(i).get(j).get(k));
-					}
-				}
-			}
-		}
+		//-----------------------------------------------------------------------------
 		ArrayList<HashMap<Integer, Integer>> ALH = new ArrayList<>();
-
-		shortSum(groupe, new HashMap<>(), ALH, 0, groupe.get(groupe.size()-1).getLevel());
-
-		Integer min = 99999999;
+		this.fillALH(allDownTables, new HashMap<>(), ALH, 0, (this.levels - 1));
+		//-----------------------------------------------------------------------------
 		Integer count = 0;
+		ArrayList<Integer> counts = new ArrayList<>();
 		for(HashMap<Integer, Integer> i : ALH) {
-			for(int j = 0; j < i.size(); j++) {
-				count  += i.get(j);
+			for(Integer j : i.values()) {
+				count += j;
 			}
-			if(count < min) {
-				min = count;
-			}
+			counts.add(count);
 			count = 0;
 		}
 
-		return (min + (this.levels - 1)) * 5;
+		return (Collections.min(counts) + (this.levels - 1)) * 5;
 	}
 
-	void shortSum(ArrayList<DownTable> groupe, HashMap<Integer, Integer> groupeMap,
-				 ArrayList<HashMap<Integer, Integer>> ALH, int i, int level)
+	private void fillALH(ArrayList<DownTable> group, HashMap<Integer, Integer> groupMap,
+				 ArrayList<HashMap<Integer, Integer>> ALH, int groupIterator, int maxLevel)
 	{
-
-
-		if(level != groupe.get(i).getLevel()) {
-			Integer temp = groupeMap.put(groupe.get(i).getLevel(), groupe.get(i).getPaces());
+		//recursive method for filling ArrayList of HashMap's
+		//group - ArrayList where store all possible places of bypasses to lower level (also there we store position of princess for lowest level)
+		//groupMap - HashMap where store overall bypass from Prince to Princess for one particular case
+		//ALH - all available bypasses from Prince to Princess
+		//groupIterator - help choose current particular group
+		//-----------------------------------------------------------------------------
+		if(maxLevel != group.get(groupIterator).getLevel()) {
+			Integer temp = groupMap.put(group.get(groupIterator).getLevel(), group.get(groupIterator).getPaces());
+			//groupMap exchange variable, but we need it, and store it in temp
+			//-----------------------------------------------------------------------------
 			if (temp != null) {
-				HashMap<Integer, Integer> tempMap = new HashMap<>(groupeMap);
-				tempMap.put(groupe.get(i).getLevel(), temp);
-				shortSum(groupe, groupeMap, ALH, i + 1, level);
-				shortSum(groupe, tempMap, ALH, i + 1, level);
+				HashMap<Integer, Integer> tempMap = new HashMap<>(groupMap);
+				tempMap.put(group.get(groupIterator).getLevel(), temp);
+				this.fillALH(group, groupMap, ALH, groupIterator + 1, maxLevel);
+				this.fillALH(group, tempMap, ALH, groupIterator + 1, maxLevel);
 			}
-
+			//-----------------------------------------------------------------------------
 			else {
-				shortSum(groupe, groupeMap, ALH, i + 1, level);
+				this.fillALH(group, groupMap, ALH, groupIterator + 1, maxLevel);
 			}
-			groupe.remove(i);
+			group.remove(groupIterator);
+			//-----------------------------------------------------------------------------
 		}
+		//-----------------------------------------------------------------------------
 		else {
-			groupeMap.put(groupe.get(groupe.size() - 1).getLevel(), groupe.get(groupe.size() - 1).getPaces());
-			ALH.add(new HashMap<>(groupeMap));
-			groupe.remove(groupe.get(groupe.size() - 1));
+			groupMap.put(group.get(group.size() - 1).getLevel(), group.get(group.size() - 1).getPaces());
+			ALH.add(new HashMap<>(groupMap));
+			group.remove(group.get(group.size() - 1));
 		}
+		//-----------------------------------------------------------------------------
 	}
 
-
-	boolean isCorrectParametersOfLabyrinth(String s)
+	private void fillArray(int[][] array)
 	{
-		return s.matches("[1-9]\\d? [1-9]\\d? [1-9]\\d?");
-	}
-
-	public void fillArray(int[][] Array)
-	{
-		for(int i = 0; i < this.rows; i++) {
-			Arrays.fill(Array[i], -2);
+		for(int[] ar : array) {
+			Arrays.fill(ar, -2);
 		}
 	}
 
 }
-
-class LabyrinthsArea {
-	private int princeRaw;
-	private int princeColumn;
-	private int amountOfDownPoints;
-	//-----------------------------------------------------------
+//-----------------------------------------------------------------------------
+/*public*/class LabyrinthsArea {
+	//-----------------------------------------------------------------------------fields
 	private FieldsInLabyrinth[][] levelInLabyrinth;
 	//-----------------------------------------------------------
-	public LabyrinthsArea(Scanner input, int rows, int columns)
+	/*public*/ LabyrinthsArea(Scanner input, int rows, int columns)
 	{
-		String[] tokens = new String[rows];
-
-		for(int i = 0; i < rows; i++) {
-			if(input.hasNext()) {
-				tokens[i] = input.nextLine().strip();
+		String[] tokens = new String[rows];//gets area symbols
+		try {
+			for (int i = 0; i < rows; i++) {
+				if (input.hasNext()) {
+					tokens[i] = input.nextLine().strip();
+				}
+				else {
+					throw new IOException("Insufficient data in file");
+				}
+				if (!this.isCorrectContentOfLabyrinth(tokens[i], columns)) {
+					throw new IOException("Incorrect value in file!");
+				}
 			}
-			else {
-				;
-			}
-			if(!isCorrectContentOfLabyrinth(tokens[i])) {
-				;
-			}
+		} catch (IOException | NoSuchElementException e) {
+			e.printStackTrace();
 		}
-
-
-
-		levelInLabyrinth = new FieldsInLabyrinth[rows][columns];
-		//-----------------------------------------------------------
+		//-----------------------------------------------------------------------------
+		this.levelInLabyrinth = new FieldsInLabyrinth[rows][columns];
+		//-----------------------------------------------------------------------------
 		for(int j = 0; j < rows; j++) {
 			for(int k = 0; k < columns; k++) {
 				switch (tokens[j].charAt(k)) {
 					case '.':
-						levelInLabyrinth[j][k] = FieldsInLabyrinth.EMPTY;
+						this.levelInLabyrinth[j][k] = FieldsInLabyrinth.EMPTY;
 						break;
 					case 'o':
-						levelInLabyrinth[j][k] = FieldsInLabyrinth.COLUMN;
+						this.levelInLabyrinth[j][k] = FieldsInLabyrinth.COLUMN;
 						break;
 					case '1':
-						levelInLabyrinth[j][k] = FieldsInLabyrinth.PRINCE;
-						princeRaw = j;
-						princeColumn = k;
+						this.levelInLabyrinth[j][k] = FieldsInLabyrinth.PRINCE;
+						Labyrinth.princeRaw = j;
+						Labyrinth.princeColumn = k;
 						break;
 					case '2':
-						levelInLabyrinth[j][k] = FieldsInLabyrinth.PRINCESS;
+						this.levelInLabyrinth[j][k] = FieldsInLabyrinth.PRINCESS;
 						break;
 				}
 			}
 		}
-		//-----------------------------------------------------------
+		//-----------------------------------------------------------------------------
+	}
+	//-----------------------------------------------------------------------------methods for constructors
+	private boolean isCorrectContentOfLabyrinth(String s, int columns)
+	{
+		return ((s.matches("[12o.\n]+")) && (columns == s.length()));
+	}
+	//-----------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------methods
+
+	/*public*/ FieldsInLabyrinth getElementOfArea(int raw, int column)
+	{
+		return this.levelInLabyrinth[raw][column];
 	}
 
-	boolean isCorrectContentOfLabyrinth(String s)
+	/*public*/ void changeElementOfArea(int raw, int column)
 	{
-		return s.matches("([1]*|[2]*)[o.\n]+");
-	}
-
-	public int getPrinceRaw()
-	{
-		return this.princeRaw;
-	}
-
-	public int getPrinceColumn()
-	{
-		return this.princeColumn;
-	}
-
-	public int getAmountOfDownPoints()
-	{
-		return this.amountOfDownPoints;
-	}
-
-	public void setAmountOfDownPoints(int amountOfDownPoints)
-	{
-		this.amountOfDownPoints = amountOfDownPoints;
-	}
-
-	FieldsInLabyrinth getPlace(int Raw, int Column)
-	{
-		return this.levelInLabyrinth[Raw][Column];
-	}
-
-	void change(FieldsInLabyrinth Place,int Raw, int Column)
-	{
-		this.levelInLabyrinth[Raw][Column] = Place;
+		this.levelInLabyrinth[raw][column] = FieldsInLabyrinth.DOWNPOINT;
 	}
 }
+//-----------------------------------------------------------------------------
 
-
-class DownTable {
+/*public*/class DownTable {
+	//-----------------------------------------------------------------------------fields
 	private int raw;
 	private int column;
 	private int paces;
-
 	private int level;
-	private int groupe;
+	private int group;
 
-	public DownTable(int raw, int column, int paces, int level, int groupe)
+	/*public*/ DownTable(int raw, int column, int paces, int level, int group)
 	{
 		this.raw = raw;
 		this.column = column;
 		this.paces = paces;
 		this.level = level;
-		this.groupe = groupe;
+		this.group = group;
 	}
-
-	public int getRaw()
+	//-----------------------------------------------------------------------------
+	//-----------------------------------------------------------------------------methods
+	/*public*/ int getRaw()
 	{
 		return this.raw;
 	}
 
-	public int getColumn()
+	/*public*/ int getColumn()
 	{
-		return column;
+		return this.column;
 	}
 
-	public int getPaces() {
-		return paces;
+	/*public*/ int getPaces() {
+		return this.paces;
 	}
 
-	public int getLevel() {
-		return level;
+	/*public*/ int getLevel() {
+		return this.level;
 	}
 
-	public int getGroupe() {
-		return groupe;
+	/*public*/ int getGroup() {
+		return this.group;
 	}
 }
-
-enum FieldsInLabyrinth {
+//-----------------------------------------------------------------------------
+/*public*/enum FieldsInLabyrinth {
 	EMPTY, COLUMN, PRINCE, PRINCESS, DOWNPOINT
 }
