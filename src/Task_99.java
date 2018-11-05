@@ -5,8 +5,8 @@ import java.util.*;
 
 public class Task_99 {
 	public static void main(String[] args) {
-		try(Formatter output = new Formatter("OUTPUT.txt")) {
-			Labyrinth test = new Labyrinth();
+		Labyrinth test = new Labyrinth();
+		try(Formatter output = new Formatter("OUTPUT.TXT")) {
 			output.format(test.toString());
 		}catch (FileNotFoundException | FormatterClosedException e) {
 			e.printStackTrace();
@@ -17,22 +17,22 @@ public class Task_99 {
 	/*public*/static class Labyrinth {
 		//-----------------------------------------------------------------------------fields
 		private ArrayList <LabyrinthsArea> levelsOfLabyrinth;//array from stand-alone levels
-		private int levels = 0;
-		private int rows = 0;
-		private int columns = 0;
+		private int levels;
+		private int rows;
+		private int columns;
 		static int princeRaw;
 		static int princeColumn;
 		static int princessRaw;
 		static int princessColumn;
 		//-----------------------------------------------------------------------------constructors
-		/*public*/ private Labyrinth(String path)
+		/*public*/ private Labyrinth(final String path)
 		{
 			this.levelsOfLabyrinth = new ArrayList<>();
-			try(Scanner input = new Scanner(Paths.get(path))) {
+			try(final Scanner input = new Scanner(Paths.get(path))) {
 				//-----------------------------------------------------------------------------
 				if(input.hasNext()) {
 					//-----------------------------------------------------------------------------
-					String parametersOfLabyrinth = input.nextLine();
+					String parametersOfLabyrinth = input.nextLine();//read data from file
 					//-----------------------------------------------------------------------------
 					if(this.isCorrectParametersOfLabyrinth(parametersOfLabyrinth)) {
 						String[] tokensParametersOfLabyrinth = parametersOfLabyrinth.split(" ");
@@ -65,14 +65,13 @@ public class Task_99 {
 
 		/*public*/ Labyrinth()
 		{
-			this("INPUT.txt");
+			this("INPUT.TXT");
 		}
 		//-----------------------------------------------------------------------------methods for constructors
-		private boolean isCorrectParametersOfLabyrinth(String s)
+		private boolean isCorrectParametersOfLabyrinth(final String s)
 		{
 			if(s.matches("[1-9]\\d? [1-9]\\d? [1-9]\\d?")) {
-				String[] tokens = s.split(" ");
-				for(String token : tokens) {
+				for(String token : s.split(" ")) {
 					if((Integer.valueOf(token) < 2) || (Integer.valueOf(token) > 50)) {
 						return false;
 					}
@@ -80,6 +79,7 @@ public class Task_99 {
 			}
 			return true;
 		}
+		//-----------------------------------------------------------------------------
 		//-----------------------------------------------------------------------------methods
 		/*public*/private void setDownPoints()
 		//find point where we can go to lower level
@@ -116,8 +116,8 @@ public class Task_99 {
 			return allLabyrinth[this.levels - 1][Labyrinth.princessRaw][Labyrinth.princessColumn] * 5;
 		}
 
-		private void fillPaces(ArrayList <LabyrinthsArea> area, int[][][] array, int currentRow, int currentColumn,
-							   int maxRow, int maxColumn, int currentPace, int currentLevel)
+		private void fillPaces(final ArrayList <LabyrinthsArea> area, final int[][][] array, final int currentRow, final int currentColumn,
+							   final int maxRow, final int maxColumn, final int currentPace, final int currentLevel)
 		{
 			//recursive method of bypass of one area of labyrinth
 			//area - current area
@@ -199,7 +199,7 @@ public class Task_99 {
 		//-----------------------------------------------------------------------------fields
 		private FieldsInLabyrinth[][] levelInLabyrinth;
 		//-----------------------------------------------------------------------------constructors
-		/*public*/ LabyrinthsArea(Scanner input, int rows, int columns)
+		/*public*/ LabyrinthsArea(final Scanner input, final int rows, final int columns)
 		{
 			String[] tokens = new String[rows];//gets area symbols
 			this.levelInLabyrinth = new FieldsInLabyrinth[rows][columns];
@@ -223,12 +223,12 @@ public class Task_99 {
 			//-----------------------------------------------------------------------------
 		}
 		//-----------------------------------------------------------------------------methods for constructors
-		private boolean isCorrectContentOfLabyrinth(String s, int columns)
+		private boolean isCorrectContentOfLabyrinth(final String s, final int columns)
 		{
 			return ((s.matches("[12o.\n]+")) && (columns == s.length()));
 		}
 
-		private void fillLevelInLabyrinth(String[] tokens, int rows, int columns)
+		private void fillLevelInLabyrinth(final String[] tokens, final int rows, final int columns)
 		{
 			for(int row = 0; row < rows; row++) {
 				for(int column = 0; column < columns; column++) {
@@ -256,12 +256,12 @@ public class Task_99 {
 		//-----------------------------------------------------------------------------
 		//-----------------------------------------------------------------------------methods
 
-		/*public*/ FieldsInLabyrinth getElementOfArea(int raw, int column)
+		/*public*/ FieldsInLabyrinth getElementOfArea(final int raw, final int column)
 		{
 			return this.levelInLabyrinth[raw][column];
 		}
 
-		/*public*/ void changeElementOfArea(int raw, int column)
+		/*public*/ void changeElementOfArea(final int raw, final int column)
 		{
 			this.levelInLabyrinth[raw][column] = FieldsInLabyrinth.DOWNPOINT;
 		}
